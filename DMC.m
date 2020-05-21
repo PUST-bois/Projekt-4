@@ -10,13 +10,15 @@ classdef DMC < handle
         D %scalar
         N %scalar
         Nu %scalar
+        ny %scalar
+        nu %scalar
     end
     
     methods
         function obj = DMC(D, N, Nu, lambda, S)
             % S is a cell list (ny x nu), where S(i,j) is a step response u_i to y_j
-            nu = 4;
-            ny = 2;
+            ny = size(S,1);
+            nu = size(S,2);
             % constructing the S components
             S_arr = {};
             for i =1:D
@@ -74,6 +76,9 @@ classdef DMC < handle
             obj.N = N;
             obj.Nu = Nu;
             
+            obj.ny = ny;
+            obj.nu = nu;
+            
             obj.dUp = zeros((obj.D - 1)*nu, 1);
         end
         
@@ -82,8 +87,6 @@ classdef DMC < handle
         % prev_controls: transposed vector  1 x nu
         % Yzad: transposed vector  1 x ny
         function [controls, err] = eval_controls(obj, measurements, prev_controls, Yzad)
-            ny=2;
-            nu=4;
             
             e = measurements' - Yzad';
             err =  e.^2;
@@ -112,7 +115,7 @@ classdef DMC < handle
             end
             
             temp = [du; obj.dUp];
-            obj.dUp = temp(1:(obj.D - 1)*nu);
+            obj.dUp = temp(1:(obj.D - 1)*obj.nu);
             
 
         end
