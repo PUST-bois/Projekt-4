@@ -1,91 +1,101 @@
 clear all;
 
-load('odp_est.mat')
+load('skok_u1.mat')
+load('skok_u2.mat')
+load('odp_u3.mat')
+load('odp_u4.mat')
 
-Yzad = zeros(400,2);
-Yzad(1:100,1) = 100;
-Yzad(101:200,1) = 60;
-Yzad(201:300,1) = 90;
-Yzad(301:400,1) = 120;
+S= {s11,s21,s31, s41;
+    s12,s22,s32, s42;
+    s13,s23,s33, s43;};
+
+Yzad = zeros(400,3);
+Yzad(1:100,1) = 20;
+Yzad(101:200,1) = 10;
+Yzad(201:300,1) = 15;
+Yzad(301:400,1) = 0;
 
 Yzad(1:100,2) = 50;
-Yzad(101:200,2) = 120;
-Yzad(201:300,2) = 70;
-Yzad(301:400,2) = 100;
+Yzad(101:200,2) = 10;
+Yzad(201:300,2) = -20;
+Yzad(301:400,2) = 40;
+
+Yzad(1:100,3) = 10;
+Yzad(101:200,3) = 70;
+Yzad(201:300,3) = -50;
+Yzad(301:400,3) = 0;
 
 sim_time = length(Yzad);
 
 % Presets serve a purpose of tuning
            %N %Nu %lambda
-presets = [[300,300,1];
-           [300,100,1];
-           [300,1,1];
-           [100,100,1];
-           [50,50,0.1];
-           [50,50,10];
-           [50,50,20]];
-for i = 1:length(presets)
-    clearvars -except sim_time Yzad S1_G1_est S3_G1_est S1_G2_est S3_G2_est presets i
+presets = [[195,195,1];
+           [195,100,1]];
+       
+for prst = 1:size(presets,1)
+    clearvars -except sim_time Yzad S presets prst
     
-    %addpath('F:\SerialCommunication'); % add a path to the functions
-    initSerialControl COM3 % initialise com port
+    nu=4;
+    ny=3;
     
-    nu=2;
-    ny=2;
-    controls = [0,0];
+    N = presets(prst,1);
+    Nu = presets(prst,2);
+    lambda = presets(prst,3);
     
-    N = presets(i,1);
-    Nu = presets(i,2);
-    lambda = presets(i,3);
+    dmc = DMC(195, N, Nu, lambda, S);
     
-    dmc = DMC(300,N,Nu,lambda,S1_G1_est,S3_G1_est, S1_G2_est, S3_G2_est);
-    
-    Y = [];
-    U = [];
-    disp_Yzad = [];
     err = zeros(ny,1);
+
+    u1 = zeros(sim_time, 1);
+    u2 = zeros(sim_time, 1);
+    u3 = zeros(sim_time, 1);
+    u4 = zeros(sim_time, 1);
     
+    y1 = zeros(sim_time, 1);
+    y2 = zeros(sim_time, 1);
+    y3 = zeros(sim_time, 1);
     
-    for k = 1:sim_time
+    u = [0; 0; 0; 0];
+    for k = 5:sim_time
         
-        mrm = readMeasurements([1,3]);
+        [y1(k), y2(k), y3(k)] = symulacja_obiektu6 ...
+                                (u1(k-1),u1(k-2),u1(k-3),u1(k-4), ...
+                                u2(k-1), u2(k-2),u2(k-3),u2(k-4), ...
+                                u3(k-1),u3(k-2), u3(k-3),u3(k-4), ...
+                                u4(k-1),u4(k-2),u4(k-3), u4(k-4), ...
+                                y1(k-1),y1(k-2),y1(k-3),y1(k-4), ...
+                                y2(k-1),y2(k-2),y2(k-3),y2(k-4), ...
+                                y3(k-1),y3(k-2),y3(k-3),y3(k-4));
+                            
+        y = [y1(k), y2(k), y3(k)];
+        [u, e] = dmc.eval_controls(y,  u, Yzad(k,:));
         
-        [controls, e] = dmc.eval_controls(mrm,  controls, Yzad(k,:));
+        u1(k) = u(1);
+        u2(k) = u(2);
+        u3(k) = u(3);
+        u4(k) = u(4);
+        
         err = err + e;
         
-        sendControls([5,6] , controls);
-        
-        disp_Yzad = [disp_Yzad; Yzad(k,:)];
-        Y = [Y; mrm];
-        U = [U; controls];
-        
-        % plotting
-        subplot(2,1,1); plot(Y); hold on; plot(disp_Yzad); hold off;  drawnow
-        subplot(2,1,2); stairs(U); ylim([-5,105]); drawnow
-        title(sprintf('N = %d, Nu = %d, lmd = %d :',N,Nu, lambda))
-        
-        waitForNewIteration();
     end
     
     str = sprintf('N = %d, Nu = %d, lmd = %d :',N,Nu, lambda);
     disp(str)
     disp(err/k) %mean squared error
     
+    i = 1;
+    figure(1)
+    hold on;
+    for yi = [y1,y2,y3]
+        plot(yi);  plot(Yzad(:,i));
+        i = i + 1;
+    end
+    hold off;
     
-    x = 1:sim_time;
-    xy1 = [x(:) Y(:,1)];
-    xy2 = [x(:) Y(:,2)];
-    xu1 = [x(:) U(:,1)];
-    xu2 = [x(:) U(:,2)];
-    xy_zad1 = [x(:) Yzad(:,1)];
-    xy_zad2 = [x(:) Yzad(:,2)];
-    
-    dlmwrite(sprintf('OUT1N=%d,Nu=%d,lmd=%d.txt',N,Nu, lambda), xy1, 'delimiter', ' ');
-    dlmwrite(sprintf('OUT2N=%d,Nu=%d,lmd=%d.txt',N,Nu, lambda), xy2, 'delimiter', ' ');
-    dlmwrite(sprintf('IN1N=%d,Nu=%d,lmd=%d.txt',N,Nu, lambda), xu1, 'delimiter', ' ');
-    dlmwrite(sprintf('IN2N=%d,Nu=%d,lmd=%d.txt',N,Nu, lambda), xu2, 'delimiter', ' ');
-    dlmwrite(sprintf('SET1N=%d,Nu=%d,lmd=%d.txt',N,Nu, lambda), xy_zad1, 'delimiter', ' ');
-    dlmwrite(sprintf('SET2N=%d,Nu=%d,lmd=%d.txt',N,Nu, lambda), xy_zad2, 'delimiter', ' ');
+    figure(2)
+    for ui = [u1,u2,u3,u4]
+        plot(ui);
+    end
  
 end
 

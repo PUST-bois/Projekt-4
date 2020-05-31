@@ -69,7 +69,7 @@ classdef DMC < handle
             end
             obj.Mp = cell2mat(obj.Mp);
             
-            obj.K = ((obj.M'*obj.M + lambda*eye(Nu*2))^-1)*obj.M';
+            obj.K = ((obj.M'*eye(N*ny)*obj.M + lambda*eye(Nu*nu))^-1)*obj.M'*eye(N*ny);
             obj.K1 = obj.K(1:nu, :);
             
             obj.D = D;
@@ -101,18 +101,7 @@ classdef DMC < handle
             % sending controls
             controls = prev_controls + du';
             
-            % constraints
-            if controls(1) > 100
-                controls(1) = 100;
-            elseif controls(1) < 0
-                controls(1) = 0;
-            end
-            
-            if controls(2) > 100
-                controls(2) = 100;
-            elseif controls(2) < 0
-                controls(2) = 0;
-            end
+          
             
             temp = [du; obj.dUp];
             obj.dUp = temp(1:(obj.D - 1)*obj.nu);
