@@ -1,4 +1,22 @@
-err = zeros(ny,1);
+clear all
+
+Yzad = zeros(400,3);
+Yzad(1:100,1) = 20;
+Yzad(101:200,1) = 10;
+Yzad(201:300,1) = 15;
+Yzad(301:400,1) = 0;
+
+Yzad(1:100,2) = 50;
+Yzad(101:200,2) = 10;
+Yzad(201:300,2) = -20;
+Yzad(301:400,2) = 40;
+
+Yzad(1:100,3) = 10;
+Yzad(101:200,3) = 70;
+Yzad(201:300,3) = -50;
+Yzad(301:400,3) = 0;
+
+sim_time = length(Yzad);
 
 u1 = zeros(sim_time, 1);
 u2 = zeros(sim_time, 1);
@@ -9,11 +27,11 @@ y1 = zeros(sim_time, 1);
 y2 = zeros(sim_time, 1);
 y3 = zeros(sim_time, 1);
 
-pid1 = PID(0.5, 10, 0.1, 0.1);
-pid2 = PID(0.5, 10, 0.1, 0.1);
-pid3 = PID(0.5, 10, 0.1, 0.1);
+pid1 = PID(0.5, 0.1, 0.1, 0.1);
+pid2 = PID(0.5, 0.1, 0.1, 0.1);
+pid3 = PID(0.5, 0.1, 0.1, 0.1);
 
-u = [0; 0; 0; 0];
+err = zeros(3,1);
 
 for k = 5:sim_time
     
@@ -34,8 +52,6 @@ for k = 5:sim_time
     
 end
 
-str = sprintf('N = %d, Nu = %d, lmd = %d :',N,Nu, lambda);
-disp(str)
 disp(err/k) %mean squared error
 
 i = 1;
@@ -48,6 +64,8 @@ end
 hold off;
 
 figure(2)
+hold on
 for ui = [u1,u2,u3,u4]
-    plot(ui);
+    plot(ui); 
 end
+hold off

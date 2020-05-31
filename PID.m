@@ -18,7 +18,7 @@ classdef PID < handle
         
         function [u, err] = eval_controls(obj, measurements, prev_u, Yzad)
             
-            e = measurements' - Yzad';
+            e = Yzad - measurements;
             err =  e.^2;
             
             u = obj.r0*e + obj.r1*obj.prev_e(1) + obj.r2*obj.prev_e(2) + prev_u;
